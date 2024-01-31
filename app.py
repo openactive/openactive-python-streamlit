@@ -1,6 +1,7 @@
-import json
 import openactive as oa
+import pandas as pd
 import streamlit as st
+from datetime import datetime
 
 st.set_page_config(
     page_title='OpenActive',
@@ -11,13 +12,6 @@ st.set_page_config(
         'About': 'Copyright 2024 OpenActive',
     }
 )
-
-if ('initialised' not in st.session_state):
-    st.session_state.initialised = False
-    st.session_state.running = False
-    st.session_state.feeds = None
-    st.session_state.providers = None
-    st.session_state.opportunities = None
 
 # Cache feeds to allow access across sessions
 @st.cache_data
@@ -32,15 +26,24 @@ def clear():
     st.session_state.dataset_url_name = None
     st.session_state.feed_url = None
     st.session_state.opportunities = None
+    st.session_state.df = None
+    st.session_state.df_edited = None
 
 def disabled(default=False):
     return True if st.session_state.running else default
 
-st.image('https://openactive.io/brand-assets/openactive-logo-large.png')
-st.divider()
+def set_time(datetime_isoformat):
+    return datetime.fromisoformat(datetime_isoformat).strftime('%Y-%m-%d %H:%M')
 
-col1, col2, col3, col4, col5 = st.columns(5)
-with col1:
+if ('initialised' not in st.session_state):
+    st.session_state.initialised = False
+    st.session_state.feeds = None
+    st.session_state.providers = None
+    clear()
+
+with st.sidebar:
+    st.image('https://openactive.io/brand-assets/openactive-logo-large.png')
+    st.divider()
     st.selectbox(
         'Data Provider',
         st.session_state.providers or [],
@@ -51,7 +54,6 @@ with col1:
         label_visibility='collapsed',
         disabled=disabled(),
     )
-with col2:
     st.selectbox(
         'Data Type',
         [feed['url'] for feed in st.session_state.feeds[st.session_state.dataset_url_name[0]]] if st.session_state.dataset_url_name else [],
@@ -62,24 +64,25 @@ with col2:
         label_visibility='collapsed',
         disabled=disabled(st.session_state.dataset_url_name==None),
     )
-with col3:
-    st.button(
-        'Go',
-        key='button_go',
-        on_click=go,
-        args=[st.session_state.feed_url],
-        # type='primary', # Making this primary gives a little flicker when clicked due to the change in disabled state
-        disabled=disabled(st.session_state.feed_url==None),
-    )
-with col4:
-    st.button(
-        'Clear',
-        key='button_clear',
-        on_click=clear,
-        disabled=st.session_state.dataset_url_name==None,
-    )
-with col5:
-    status = st.status('Complete' if st.session_state.initialised and not st.session_state.running else '', state='complete')
+    col1, col2, col3 = st.columns([1,1,2])
+    with col1:
+        st.button(
+            'Go',
+            key='button_go',
+            on_click=go,
+            args=[st.session_state.feed_url],
+            # type='primary', # Making this primary gives a little flicker when clicked due to the change in disabled state
+            disabled=disabled(st.session_state.feed_url==None),
+        )
+    with col2:
+        st.button(
+            'Clear',
+            key='button_clear',
+            on_click=clear,
+            disabled=st.session_state.dataset_url_name==None,
+        )
+    with col3:
+        status = st.status('Complete' if st.session_state.initialised and not st.session_state.running else '', state='complete')
 
 if (not st.session_state.initialised):
     status.update(label='Initialising', state='running')
@@ -93,6 +96,25 @@ if (st.session_state.running):
     status.update(label='Running', state='running')
     # opportunities = json.load(open('opportunities-activeleeds-live-session-series.json', 'r'))
     st.session_state.opportunities = oa.get_opportunities(st.session_state.feed_url)
+    data = {
+        'ID': st.session_state.opportunities['items'].keys(),
+        'Super-event ID': [],
+        'Name': [],
+        'Time start': [],
+        'Time end': [],
+    }
+    for item in st.session_state.opportunities['items'].values():
+        if ('data' in item.keys()):
+            data['Super-event ID'].append(item['data']['superEvent'].split('/')[-1] if 'superEvent' in item['data'].keys() else None)
+            data['Name'].append(item['data']['name'] if 'name' in item['data'].keys() else None)
+            data['Time start'].append(item['data']['startDate'] if 'startDate' in item['data'].keys() else None)
+            data['Time end'].append(item['data']['endDate'] if 'endDate' in item['data'].keys() else None)
+    st.session_state.df = pd.DataFrame(data)
+    st.session_state.df['Time start'] = st.session_state.df['Time start'].apply(set_time)
+    st.session_state.df['Time end'] = st.session_state.df['Time end'].apply(set_time)
+    st.session_state.df['JSON'] = pd.Series([False] * len(st.session_state.df))
+    st.session_state.df['JSON'][0] = True
+    del(data)
     st.session_state.running = False
     st.rerun()
 
@@ -100,7 +122,22 @@ if (not st.session_state.feed_url):
     st.session_state.opportunities = None
 
 if (st.session_state.opportunities):
-    st.json(list(st.session_state.opportunities['items'].values())[0:10])
+    st.write('{} rows'.format(len(st.session_state.df)))
+    st.session_state.df_edited = st.data_editor(
+        st.session_state.df,
+        use_container_width=True,
+        disabled=['ID', 'Super-event ID', 'Name', 'Time start', 'Time end'],
+        column_config={
+            '_index': st.column_config.NumberColumn(label='Index'),
+            'JSON': st.column_config.CheckboxColumn(),
+        },
+    )
+    if (any(st.session_state.df_edited['JSON'])):
+        selected_idxs = [str(idx) for idx in st.session_state.df_edited.index[st.session_state.df_edited['JSON']].values]
+        selected_ids = st.session_state.df_edited['ID'][st.session_state.df_edited['JSON']].values
+        for tab_idx,tab in enumerate(st.tabs(selected_idxs)):
+            with tab:
+                st.json(st.session_state.opportunities['items'][selected_ids[tab_idx]])
 
 # today = datetime.datetime.now()
 # filter_dates = st.date_input(
