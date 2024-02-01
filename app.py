@@ -88,66 +88,66 @@ with st.sidebar:
             on_click=clear,
             disabled=st.session_state.dataset_url_name==None,
         )
-    with col3:
-        status = st.status('Complete' if st.session_state.initialised and not st.session_state.running else '', state='complete')
 
 if (not st.session_state.initialised):
-    status.update(label='Initialising', state='running')
-    # st.session_state.feeds = {'a':[{'url':'1','publisherName':'A'}],'b':[{'url':'2','publisherName':'B'}],'c':[{'url':'3','publisherName':'C'}]}
-    st.session_state.feeds = get_feeds()
-    st.session_state.providers = [(dataset_url,feeds_dataset[0]['publisherName']) for dataset_url,feeds_dataset in st.session_state.feeds.items()]
-    st.session_state.initialised = True
-    st.rerun()
+    with col3:
+        # Calling get_feeds() automatically includes a spinner
+        # st.session_state.feeds = {'a':[{'url':'1','publisherName':'A'}],'b':[{'url':'2','publisherName':'B'}],'c':[{'url':'3','publisherName':'C'}]}
+        st.session_state.feeds = get_feeds()
+        st.session_state.providers = [(dataset_url,feeds_dataset[0]['publisherName']) for dataset_url,feeds_dataset in st.session_state.feeds.items()]
+        st.session_state.initialised = True
+        st.rerun()
 
 if (st.session_state.running):
-    status.update(label='Running', state='running')
     # opportunities = json.load(open('opportunities-activeleeds-live-session-series.json', 'r'))
-    st.session_state.opportunities = oa.get_opportunities(st.session_state.feed_url)
-    num_items = len(st.session_state.opportunities['items'].keys())
-    data = {
-        'ID': st.session_state.opportunities['items'].keys(),
-        'Super-event ID': [''] * num_items,
-        'Name': [''] * num_items,
-        'Time start': [''] * num_items,
-        'Time end': [''] * num_items,
-        'Address': [''] * num_items,
-        'Coordinates': [''] * num_items,
-        'Organizer name': [''] * num_items,
-        'Organizer logo': [''] * num_items,
-        'URL': [''] * num_items,
-    }
-    for item_idx,item in enumerate(st.session_state.opportunities['items'].values()):
-        if ('data' in item.keys()):
-            try: data['Super-event ID'][item_idx] = item['data']['superEvent'].split('/')[-1]
-            except: pass
-            try: data['Name'][item_idx] = item['data']['name']
-            except: pass
-            try: data['Time start'][item_idx] = item['data']['startDate']
-            except: pass
-            try: data['Time end'][item_idx] = item['data']['endDate']
-            except: pass
-            try: data['Address'][item_idx] = item['data']['location']['address']
-            except: pass
-            try: data['Coordinates'][item_idx] = '{:.5f}, {:.5f}'.format(item['data']['location']['geo']['latitude'], item['data']['location']['geo']['longitude']) # 5 decimal places gives accuracy at the metre level
-            except: pass
-            try: data['Organizer name'][item_idx] = item['data']['organizer']['name']
-            except:
-                try: data['Organizer name'][item_idx] = item['data']['superEvent']['organizer']['name']
-                except: pass
-            try: data['Organizer logo'][item_idx] = item['data']['organizer']['logo']['url']
-            except:
-                try: data['Organizer logo'][item_idx] = item['data']['superEvent']['organizer']['logo']['url']
-                except: pass
-            try: data['URL'][item_idx] = item['data']['url']
-            except: pass
-    st.session_state.df = pd.DataFrame(data)
-    st.session_state.df['Time start'] = st.session_state.df['Time start'].apply(set_time)
-    st.session_state.df['Time end'] = st.session_state.df['Time end'].apply(set_time)
-    st.session_state.df['Address'] = st.session_state.df['Address'].apply(set_address)
-    st.session_state.df.insert(0, 'JSON', pd.Series([True] + [False] * (len(st.session_state.df)-1)))
-    del(data)
-    st.session_state.running = False
-    st.rerun()
+    with col3:
+        with st.spinner('Gathering data ...'):
+            st.session_state.opportunities = oa.get_opportunities(st.session_state.feed_url)
+            num_items = len(st.session_state.opportunities['items'].keys())
+            data = {
+                'ID': st.session_state.opportunities['items'].keys(),
+                'Super-event ID': [''] * num_items,
+                'Name': [''] * num_items,
+                'Time start': [''] * num_items,
+                'Time end': [''] * num_items,
+                'Address': [''] * num_items,
+                'Coordinates': [''] * num_items,
+                'Organizer name': [''] * num_items,
+                'Organizer logo': [''] * num_items,
+                'URL': [''] * num_items,
+            }
+            for item_idx,item in enumerate(st.session_state.opportunities['items'].values()):
+                if ('data' in item.keys()):
+                    try: data['Super-event ID'][item_idx] = item['data']['superEvent'].split('/')[-1]
+                    except: pass
+                    try: data['Name'][item_idx] = item['data']['name']
+                    except: pass
+                    try: data['Time start'][item_idx] = item['data']['startDate']
+                    except: pass
+                    try: data['Time end'][item_idx] = item['data']['endDate']
+                    except: pass
+                    try: data['Address'][item_idx] = item['data']['location']['address']
+                    except: pass
+                    try: data['Coordinates'][item_idx] = '{:.5f}, {:.5f}'.format(item['data']['location']['geo']['latitude'], item['data']['location']['geo']['longitude']) # 5 decimal places gives accuracy at the metre level
+                    except: pass
+                    try: data['Organizer name'][item_idx] = item['data']['organizer']['name']
+                    except:
+                        try: data['Organizer name'][item_idx] = item['data']['superEvent']['organizer']['name']
+                        except: pass
+                    try: data['Organizer logo'][item_idx] = item['data']['organizer']['logo']['url']
+                    except:
+                        try: data['Organizer logo'][item_idx] = item['data']['superEvent']['organizer']['logo']['url']
+                        except: pass
+                    try: data['URL'][item_idx] = item['data']['url']
+                    except: pass
+            st.session_state.df = pd.DataFrame(data)
+            st.session_state.df['Time start'] = st.session_state.df['Time start'].apply(set_time)
+            st.session_state.df['Time end'] = st.session_state.df['Time end'].apply(set_time)
+            st.session_state.df['Address'] = st.session_state.df['Address'].apply(set_address)
+            st.session_state.df.insert(0, 'JSON', pd.Series([True] + [False] * (len(st.session_state.df)-1)))
+            del(data)
+            st.session_state.running = False
+            st.rerun()
 
 if (not st.session_state.feed_url):
     st.session_state.opportunities = None
