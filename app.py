@@ -13,6 +13,17 @@ st.set_page_config(
     }
 )
 
+# st.markdown(
+#     '''
+#     <style>
+#         [data-testid=stSidebar] {
+#             background-color: #253882;
+#         }
+#     </style>
+#     ''',
+#     unsafe_allow_html=True
+# )
+
 # Cache feeds to allow access across sessions
 @st.cache_data
 def get_feeds():
@@ -20,20 +31,32 @@ def get_feeds():
 
 def go(feed_url=None):
     st.session_state.running = True
+    clear_outputs()
 
 def clear():
     st.session_state.running = False
+    clear_inputs()
+    clear_outputs()
+
+def clear_inputs():
     st.session_state.dataset_url_name = None
     st.session_state.feed_url = None
+
+def clear_outputs():
     st.session_state.opportunities = None
     st.session_state.df = None
     st.session_state.df_edited = None
+    clear_filters()
+
+def clear_filters():
+    st.session_state.filtered_ids = []
+    st.session_state.filtered_superevent_ids = []
+    st.session_state.filtered_names = []
+    st.session_state.filtered_addresses = []
+    st.session_state.filtered_organizers = []
 
 def disabled(default=False):
     return True if st.session_state.running else default
-
-def set_time(datetime_isoformat):
-    return datetime.fromisoformat(datetime_isoformat).strftime('%Y-%m-%d %H:%M') if len(datetime_isoformat)>0 else ''
 
 def set_address(address_in):
     address_out = ''
@@ -42,11 +65,16 @@ def set_address(address_in):
         except: pass
     return address_out
 
+def set_time(datetime_isoformat):
+    return datetime.fromisoformat(datetime_isoformat).strftime('%Y-%m-%d %H:%M') if len(datetime_isoformat)>0 else ''
+
 if ('initialised' not in st.session_state):
     st.session_state.initialised = False
     st.session_state.feeds = None
     st.session_state.providers = None
     clear()
+elif (not st.session_state.feed_url):
+    clear_outputs()
 
 with st.sidebar:
     st.image('https://openactive.io/brand-assets/openactive-logo-large.png')
@@ -57,8 +85,7 @@ with st.sidebar:
         key='dataset_url_name',
         format_func=lambda x: x[1],
         index=None,
-        placeholder='Choose a data provider',
-        label_visibility='collapsed',
+        on_change=clear_outputs,
         disabled=disabled(),
     )
     st.selectbox(
@@ -67,11 +94,10 @@ with st.sidebar:
         key='feed_url',
         format_func=lambda x: x.split('/')[-1],
         index=None,
-        placeholder='Choose a data feed',
-        label_visibility='collapsed',
+        on_change=clear_outputs,
         disabled=disabled(st.session_state.dataset_url_name==None),
     )
-    col1, col2, col3 = st.columns([1,1,2])
+    col1, col2, col3 = st.columns([1,2,2])
     with col1:
         st.button(
             'Go',
@@ -84,7 +110,7 @@ with st.sidebar:
     with col2:
         st.button(
             'Clear',
-            key='button_clear',
+            key='button_clear_inputs',
             on_click=clear,
             disabled=st.session_state.dataset_url_name==None,
         )
@@ -99,36 +125,38 @@ if (not st.session_state.initialised):
         st.rerun()
 
 if (st.session_state.running):
-    # opportunities = json.load(open('opportunities-activeleeds-live-session-series.json', 'r'))
     with col3:
-        with st.spinner('Gathering data ...'):
+        with st.spinner(''):
+            # st.session_state.opportunities = json.load(open('opportunities-activeleeds-live-session-series.json', 'r'))
             st.session_state.opportunities = oa.get_opportunities(st.session_state.feed_url)
             num_items = len(st.session_state.opportunities['items'].keys())
+
             data = {
                 'ID': st.session_state.opportunities['items'].keys(),
                 'Super-event ID': [''] * num_items,
                 'Name': [''] * num_items,
-                'Time start': [''] * num_items,
-                'Time end': [''] * num_items,
                 'Address': [''] * num_items,
                 'Coordinates': [''] * num_items,
+                'Time start': [''] * num_items,
+                'Time end': [''] * num_items,
                 'Organizer name': [''] * num_items,
                 'Organizer logo': [''] * num_items,
                 'URL': [''] * num_items,
             }
+
             for item_idx,item in enumerate(st.session_state.opportunities['items'].values()):
                 if ('data' in item.keys()):
                     try: data['Super-event ID'][item_idx] = item['data']['superEvent'].split('/')[-1]
                     except: pass
                     try: data['Name'][item_idx] = item['data']['name']
                     except: pass
-                    try: data['Time start'][item_idx] = item['data']['startDate']
-                    except: pass
-                    try: data['Time end'][item_idx] = item['data']['endDate']
-                    except: pass
                     try: data['Address'][item_idx] = item['data']['location']['address']
                     except: pass
                     try: data['Coordinates'][item_idx] = '{:.5f}, {:.5f}'.format(item['data']['location']['geo']['latitude'], item['data']['location']['geo']['longitude']) # 5 decimal places gives accuracy at the metre level
+                    except: pass
+                    try: data['Time start'][item_idx] = item['data']['startDate']
+                    except: pass
+                    try: data['Time end'][item_idx] = item['data']['endDate']
                     except: pass
                     try: data['Organizer name'][item_idx] = item['data']['organizer']['name']
                     except:
@@ -140,26 +168,93 @@ if (st.session_state.running):
                         except: pass
                     try: data['URL'][item_idx] = item['data']['url']
                     except: pass
+
             st.session_state.df = pd.DataFrame(data)
+            del(data)
+            st.session_state.df.insert(0, 'JSON', pd.Series([False] * len(st.session_state.df)))
+            st.session_state.df.index = range(1, len(st.session_state.df)+1) # This must happen after manual insertion of a new column, or the new column will not contain the right number of elements
+            st.session_state.df['Address'] = st.session_state.df['Address'].apply(set_address)
             st.session_state.df['Time start'] = st.session_state.df['Time start'].apply(set_time)
             st.session_state.df['Time end'] = st.session_state.df['Time end'].apply(set_time)
-            st.session_state.df['Address'] = st.session_state.df['Address'].apply(set_address)
-            st.session_state.df.insert(0, 'JSON', pd.Series([True] + [False] * (len(st.session_state.df)-1)))
-            del(data)
+
+            st.session_state.unique_ids = [id.strip() for id in sorted(set(st.session_state.df['ID'])) if id.strip()]
+            st.session_state.unique_superevent_ids = [superevent_id.strip() for superevent_id in sorted(set(st.session_state.df['Super-event ID'])) if superevent_id.strip()]
+            st.session_state.unique_names = [name.strip() for name in sorted(set(st.session_state.df['Name'])) if name.strip()]
+            st.session_state.unique_addresses = [address.strip() for address in sorted(set(st.session_state.df['Address'])) if address.strip()]
+            st.session_state.unique_organizers = [organizer.strip() for organizer in sorted(set(st.session_state.df['Organizer name'])) if organizer.strip()]
+
+            st.session_state.disabled_columns = ['_index'] + list(st.session_state.df.columns) # The index column is not editable by default, but for some reason becomes editable when a filter selection is made, so we explicitly add it here to ensure against this
+            st.session_state.disabled_columns.remove('JSON')
+
             st.session_state.running = False
             st.rerun()
 
-if (not st.session_state.feed_url):
-    st.session_state.opportunities = None
-
 if (st.session_state.opportunities):
-    st.write('{} rows'.format(len(st.session_state.df)))
-    disabled_columns = list(st.session_state.df.columns)
-    disabled_columns.remove('JSON')
+    with st.sidebar:
+        st.divider()
+        st.write('Filters')
+        st.multiselect(
+            'ID',
+            st.session_state.unique_ids,
+            key='filtered_ids',
+            disabled=len(st.session_state.unique_ids)==0,
+        )
+        st.multiselect(
+            'Super-event ID',
+            st.session_state.unique_superevent_ids,
+            key='filtered_superevent_ids',
+            disabled=len(st.session_state.unique_superevent_ids)==0,
+        )
+        st.multiselect(
+            'Name',
+            st.session_state.unique_names,
+            key='filtered_names',
+            disabled=len(st.session_state.unique_names)==0,
+        )
+        st.multiselect(
+            'Address',
+            st.session_state.unique_addresses,
+            key='filtered_addresses',
+            disabled=len(st.session_state.unique_addresses)==0,
+        )
+        st.multiselect(
+            'Organizer',
+            st.session_state.unique_organizers,
+            key='filtered_organizers',
+            disabled=len(st.session_state.unique_organizers)==0,
+        )
+        st.button(
+            'Clear',
+            key='button_clear_filters',
+            on_click=clear_filters,
+            disabled=len(
+                st.session_state.filtered_ids +
+                st.session_state.filtered_superevent_ids +
+                st.session_state.filtered_names +
+                st.session_state.filtered_addresses +
+                st.session_state.filtered_organizers
+            )==0
+        )
+
+    df_filtered = st.session_state.df
+    if (st.session_state.filtered_ids):
+        df_filtered = df_filtered.loc[df_filtered['ID'].isin(st.session_state.filtered_ids)]
+    if (st.session_state.filtered_superevent_ids):
+        df_filtered = df_filtered.loc[df_filtered['Super-event ID'].isin(st.session_state.filtered_superevent_ids)]
+    if (st.session_state.filtered_names):
+        df_filtered = df_filtered.loc[df_filtered['Name'].isin(st.session_state.filtered_names)]
+    if (st.session_state.filtered_addresses):
+        df_filtered = df_filtered.loc[df_filtered['Address'].isin(st.session_state.filtered_addresses)]
+    if (st.session_state.filtered_organizers):
+        df_filtered = df_filtered.loc[df_filtered['Organizer name'].isin(st.session_state.filtered_organizers)]
+    if (len(df_filtered)>0):
+        df_filtered.at[df_filtered.index[0], 'JSON'] = True
+
+    st.write('{} rows'.format(len(df_filtered)))
     st.session_state.df_edited = st.data_editor(
-        st.session_state.df,
+        df_filtered,
         use_container_width=True,
-        disabled=disabled_columns,
+        disabled=st.session_state.disabled_columns,
         column_config={
             '_index': st.column_config.NumberColumn(label='Index'),
             'JSON': st.column_config.CheckboxColumn(),
@@ -167,9 +262,10 @@ if (st.session_state.opportunities):
             'URL': st.column_config.LinkColumn(),
         },
     )
+
     if (any(st.session_state.df_edited['JSON'])):
-        selected_idxs = [str(idx) for idx in st.session_state.df_edited.index[st.session_state.df_edited['JSON']].values]
-        selected_ids = st.session_state.df_edited['ID'][st.session_state.df_edited['JSON']].values
+        selected_idxs = list(st.session_state.df_edited.index[st.session_state.df_edited['JSON']].values.astype(str))
+        selected_ids = list(st.session_state.df_edited['ID'][st.session_state.df_edited['JSON']].values.astype(str))
         for tab_idx,tab in enumerate(st.tabs(selected_idxs)):
             with tab:
                 st.json(st.session_state.opportunities['items'][selected_ids[tab_idx]])
