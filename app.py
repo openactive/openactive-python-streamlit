@@ -3,6 +3,8 @@ import pandas as pd
 import streamlit as st
 from datetime import datetime
 
+# --------------------------------------------------------------------------------------------------
+
 st.set_page_config(
     page_title='OpenActive',
     page_icon='https://www.openactive.io/wp-content/themes/open-active-1_3/images/favicon.png',
@@ -24,23 +26,33 @@ st.set_page_config(
 #     unsafe_allow_html=True
 # )
 
+# --------------------------------------------------------------------------------------------------
+
 # Cache feeds to allow access across sessions
 @st.cache_data
 def get_feeds():
     return oa.get_feeds()
 
+# --------------------------------------------------------------------------------------------------
+
 def go(feed_url=None):
     st.session_state.running = True
     clear_outputs()
+
+# --------------------------------------------------------------------------------------------------
 
 def clear():
     st.session_state.running = False
     clear_inputs()
     clear_outputs()
 
+# --------------------------------------------------------------------------------------------------
+
 def clear_inputs():
     st.session_state.dataset_url_name = None
     st.session_state.feed_url = None
+
+# --------------------------------------------------------------------------------------------------
 
 def clear_outputs():
     st.session_state.opportunities = None
@@ -56,6 +68,8 @@ def clear_outputs():
     st.session_state.unique_times_range = ()
     clear_filters()
 
+# --------------------------------------------------------------------------------------------------
+
 def clear_filters():
     st.session_state.filtered_ids = []
     st.session_state.filtered_superevent_ids = []
@@ -64,8 +78,12 @@ def clear_filters():
     st.session_state.filtered_addresses = []
     st.session_state.filtered_times_range = st.session_state.unique_times_range
 
+# --------------------------------------------------------------------------------------------------
+
 def disable_input_controls(default=False):
     return True if st.session_state.running else default
+
+# --------------------------------------------------------------------------------------------------
 
 def disable_button_clear_filters():
     filtered_multiselects_active = len(
@@ -87,6 +105,8 @@ def disable_button_clear_filters():
 
     return not filtered_multiselects_active and not filtered_times_range_active
 
+# --------------------------------------------------------------------------------------------------
+
 def set_address(address_in):
     address_out = ''
     for address_part in ['streetAddress', 'addressLocality', 'addressRegion', 'postalCode', 'addressCountry']:
@@ -94,8 +114,12 @@ def set_address(address_in):
         except: pass
     return address_out
 
+# --------------------------------------------------------------------------------------------------
+
 def set_time(datetime_isoformat):
     return datetime.fromisoformat(datetime_isoformat).strftime('%Y-%m-%d %H:%M') if len(datetime_isoformat)>0 else ''
+
+# --------------------------------------------------------------------------------------------------
 
 if ('initialised' not in st.session_state):
     st.session_state.initialised = False
@@ -104,6 +128,8 @@ if ('initialised' not in st.session_state):
     clear()
 elif (not st.session_state.feed_url):
     clear_outputs()
+
+# --------------------------------------------------------------------------------------------------
 
 with st.sidebar:
     st.image('https://openactive.io/brand-assets/openactive-logo-large.png')
@@ -144,6 +170,8 @@ with st.sidebar:
             disabled=st.session_state.dataset_url_name==None,
         )
 
+# --------------------------------------------------------------------------------------------------
+
 if (not st.session_state.initialised):
     with col3:
         # Calling get_feeds() automatically includes a spinner
@@ -152,6 +180,8 @@ if (not st.session_state.initialised):
         st.session_state.providers = [(dataset_url,feeds_dataset[0]['publisherName']) for dataset_url,feeds_dataset in st.session_state.feeds.items()]
         st.session_state.initialised = True
         st.rerun()
+
+# --------------------------------------------------------------------------------------------------
 
 if (st.session_state.running):
     with col3:
@@ -223,6 +253,8 @@ if (st.session_state.running):
 
             st.session_state.running = False
             st.rerun()
+
+# --------------------------------------------------------------------------------------------------
 
 if (st.session_state.opportunities):
     with st.sidebar:
@@ -316,6 +348,8 @@ if (st.session_state.opportunities):
         for tab_idx,tab in enumerate(st.tabs(selected_idxs)):
             with tab:
                 st.json(st.session_state.opportunities['items'][selected_ids[tab_idx]])
+
+# --------------------------------------------------------------------------------------------------
 
 # today = datetime.datetime.now()
 # filter_dates = st.date_input(
