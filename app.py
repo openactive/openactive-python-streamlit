@@ -57,11 +57,11 @@ def clear_inputs():
 def clear_outputs():
     st.session_state.opportunities = None
     st.session_state.df = None
-    st.session_state.df_edited = None
     st.session_state.df_filtered = None
+    st.session_state.df_edited = None
     st.session_state.unique_ids = []
     st.session_state.unique_superevent_ids = []
-    st.session_state.unique_organizers = []
+    st.session_state.unique_organizer_names = []
     st.session_state.unique_names = []
     st.session_state.unique_addresses = []
     st.session_state.unique_times = []
@@ -112,12 +112,17 @@ def set_address(address_in):
     for address_part in ['streetAddress', 'addressLocality', 'addressRegion', 'postalCode', 'addressCountry']:
         try: address_out += address_in[address_part] + ('\n' if address_part!='addressCountry' else '')
         except: pass
-    return address_out
+    return address_out or None
 
 # --------------------------------------------------------------------------------------------------
 
 def set_time(datetime_isoformat):
-    return datetime.fromisoformat(datetime_isoformat).strftime('%Y-%m-%d %H:%M') if len(datetime_isoformat)>0 else ''
+    return datetime.fromisoformat(datetime_isoformat).strftime('%Y-%m-%d %H:%M') if len(datetime_isoformat)>0 else None
+
+# --------------------------------------------------------------------------------------------------
+
+def get_unique(datalist):
+    return sorted(set([x for x in datalist if type(x)==str and x.strip()]))
 
 # --------------------------------------------------------------------------------------------------
 
@@ -190,58 +195,56 @@ if (st.session_state.running):
             st.session_state.opportunities = oa.get_opportunities(st.session_state.feed_url)
             num_items = len(st.session_state.opportunities['items'].keys())
 
-            data = {
+            st.session_state.df = pd.DataFrame({
+                'JSON': [False] * num_items,
                 'ID': st.session_state.opportunities['items'].keys(),
-                'Super-event ID': [''] * num_items,
-                'Organizer name': [''] * num_items,
-                'Organizer logo': [''] * num_items,
-                'Name': [''] * num_items,
-                'Address': [''] * num_items,
-                'Coordinates': [''] * num_items,
-                'Time start': [''] * num_items,
-                'Time end': [''] * num_items,
-                'URL': [''] * num_items,
-            }
+                'Super-event ID': [None] * num_items,
+                'Organizer name': [None] * num_items,
+                'Organizer logo': [None] * num_items,
+                'Name': [None] * num_items,
+                'Address': [None] * num_items,
+                'Lat': [None] * num_items,
+                'Lon': [None] * num_items,
+                'Time start': [None] * num_items,
+                'Time end': [None] * num_items,
+                'URL': [None] * num_items,
+            })
 
             for item_idx,item in enumerate(st.session_state.opportunities['items'].values()):
                 if ('data' in item.keys()):
-                    try: data['Super-event ID'][item_idx] = item['data']['superEvent'].split('/')[-1]
+                    try: st.session_state.df.at[item_idx, 'Super-event ID'] = item['data']['superEvent'].split('/')[-1]
                     except: pass
-                    try: data['Organizer name'][item_idx] = item['data']['organizer']['name']
+                    try: st.session_state.df.at[item_idx, 'Organizer name'] = item['data']['organizer']['name']
                     except:
-                        try: data['Organizer name'][item_idx] = item['data']['superEvent']['organizer']['name']
+                        try: st.session_state.df.at[item_idx, 'Organizer name'] = item['data']['superEvent']['organizer']['name']
                         except: pass
-                    try: data['Organizer logo'][item_idx] = item['data']['organizer']['logo']['url']
+                    try: st.session_state.df.at[item_idx, 'Organizer logo'] = item['data']['organizer']['logo']['url']
                     except:
-                        try: data['Organizer logo'][item_idx] = item['data']['superEvent']['organizer']['logo']['url']
+                        try: st.session_state.df.at[item_idx, 'Organizer logo'] = item['data']['superEvent']['organizer']['logo']['url']
                         except: pass
-                    try: data['Name'][item_idx] = item['data']['name']
+                    try: st.session_state.df.at[item_idx, 'Name'] = item['data']['name']
                     except: pass
-                    try: data['Address'][item_idx] = item['data']['location']['address']
+                    try: st.session_state.df.at[item_idx, 'Address'] = set_address(item['data']['location']['address'])
                     except: pass
-                    try: data['Coordinates'][item_idx] = '{:.5f}, {:.5f}'.format(item['data']['location']['geo']['latitude'], item['data']['location']['geo']['longitude']) # 5 decimal places gives accuracy at the metre level
+                    try: st.session_state.df.at[item_idx, 'Lat'] = float(item['data']['location']['geo']['latitude'])
                     except: pass
-                    try: data['Time start'][item_idx] = item['data']['startDate']
+                    try: st.session_state.df.at[item_idx, 'Lon'] = float(item['data']['location']['geo']['longitude'])
                     except: pass
-                    try: data['Time end'][item_idx] = item['data']['endDate']
+                    try: st.session_state.df.at[item_idx, 'Time start'] = set_time(item['data']['startDate'])
                     except: pass
-                    try: data['URL'][item_idx] = item['data']['url']
+                    try: st.session_state.df.at[item_idx, 'Time end'] = set_time(item['data']['endDate'])
+                    except: pass
+                    try: st.session_state.df.at[item_idx, 'URL'] = item['data']['url']
                     except: pass
 
-            st.session_state.df = pd.DataFrame(data)
-            del(data)
-            st.session_state.df.insert(0, 'JSON', pd.Series([False] * len(st.session_state.df)))
-            st.session_state.df.index = range(1, len(st.session_state.df)+1) # This must happen after manual insertion of a new column, or the new column will not contain the right number of elements
-            st.session_state.df['Address'] = st.session_state.df['Address'].apply(set_address)
-            st.session_state.df['Time start'] = st.session_state.df['Time start'].apply(set_time)
-            st.session_state.df['Time end'] = st.session_state.df['Time end'].apply(set_time)
+            st.session_state.df.index = range(1, num_items+1)
 
-            st.session_state.unique_ids = [id.strip() for id in sorted(set(st.session_state.df['ID'])) if id.strip()]
-            st.session_state.unique_superevent_ids = [superevent_id.strip() for superevent_id in sorted(set(st.session_state.df['Super-event ID'])) if superevent_id.strip()]
-            st.session_state.unique_organizers = [organizer.strip() for organizer in sorted(set(st.session_state.df['Organizer name'])) if organizer.strip()]
-            st.session_state.unique_names = [name.strip() for name in sorted(set(st.session_state.df['Name'])) if name.strip()]
-            st.session_state.unique_addresses = [address.strip() for address in sorted(set(st.session_state.df['Address'])) if address.strip()]
-            st.session_state.unique_times = [time.strip() for time in sorted(set(pd.concat([st.session_state.df['Time start'], st.session_state.df['Time end']]))) if time.strip()]
+            st.session_state.unique_ids = get_unique(st.session_state.df['ID'])
+            st.session_state.unique_superevent_ids = get_unique(st.session_state.df['Super-event ID'])
+            st.session_state.unique_organizer_names = get_unique(st.session_state.df['Organizer name'])
+            st.session_state.unique_names = get_unique(st.session_state.df['Name'])
+            st.session_state.unique_addresses = get_unique(st.session_state.df['Address'])
+            st.session_state.unique_times = get_unique(pd.concat([st.session_state.df['Time start'], st.session_state.df['Time end']]))
             st.session_state.unique_times_range = (
                 datetime.fromisoformat(st.session_state.unique_times[0]).date(),
                 datetime.fromisoformat(st.session_state.unique_times[-1]).date()
@@ -274,9 +277,9 @@ if (st.session_state.opportunities):
         )
         st.multiselect(
             'Organizer',
-            st.session_state.unique_organizers,
+            st.session_state.unique_organizer_names,
             key='filtered_organizers',
-            disabled=len(st.session_state.unique_organizers)==0,
+            disabled=len(st.session_state.unique_organizer_names)==0,
         )
         st.multiselect(
             'Name',
@@ -330,9 +333,11 @@ if (st.session_state.opportunities):
         use_container_width=True,
         disabled=st.session_state.disabled_columns,
         column_config={
-            '_index': st.column_config.NumberColumn(label='Index'),
+            '_index': st.column_config.NumberColumn(label='Row'),
             'JSON': st.column_config.CheckboxColumn(),
             'Organizer logo': st.column_config.ImageColumn(),
+            'Lat': st.column_config.NumberColumn(format='%.5f'), # 5 decimal places gives accuracy at the metre level
+            'Lon': st.column_config.NumberColumn(format='%.5f'), # 5 decimal places gives accuracy at the metre level
             # It is simpler to leave the time columns as strings rather than convert to DateTime objects, which
             # has issues when the strings are empty, so the following lines aren't needed but are left here to
             # warn against a change that may take a while to figure out and ultimately lead to the same conclusion.
