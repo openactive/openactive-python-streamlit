@@ -16,6 +16,7 @@ st.set_page_config(
     }
 )
 
+# Custom styling
 # st.markdown(
 #     '''
 #     <style>
@@ -29,7 +30,7 @@ st.set_page_config(
 
 # --------------------------------------------------------------------------------------------------
 
-# Cache feeds to allow access across sessions
+# Cache feeds to allow access across sessions i.e. different browser tabs
 @st.cache_data
 def get_feeds():
     return oa.get_feeds()
@@ -187,7 +188,6 @@ with st.sidebar:
 if (not st.session_state.initialised):
     with col3:
         # Calling get_feeds() automatically includes a spinner
-        # st.session_state.feeds = {'a':[{'url':'1','publisherName':'A'}],'b':[{'url':'2','publisherName':'B'}],'c':[{'url':'3','publisherName':'C'}]}
         st.session_state.feeds = get_feeds()
         st.session_state.providers = [(dataset_url,feeds_dataset[0]['publisherName']) for dataset_url,feeds_dataset in st.session_state.feeds.items()]
         st.session_state.initialised = True
@@ -198,7 +198,6 @@ if (not st.session_state.initialised):
 if (st.session_state.running):
     with col3:
         with st.spinner(''):
-            # st.session_state.opportunities = json.load(open('opportunities-activeleeds-live-session-series.json', 'r'))
             st.session_state.opportunities = oa.get_opportunities(st.session_state.feed_url)
             num_items = len(st.session_state.opportunities['items'].keys())
 
@@ -258,7 +257,7 @@ if (st.session_state.running):
             ) if st.session_state.unique_times else ()
             st.session_state.filtered_times_range = st.session_state.unique_times_range # We need to initialise this here, for some reason it doesn't do it when the associated filter widget is created
 
-            st.session_state.disabled_columns = ['_index'] + list(st.session_state.df.columns) # The index column is not editable by default, but for some reason becomes editable when a filter selection is made, so we explicitly add it here to ensure against this
+            st.session_state.disabled_columns = ['_index'] + list(st.session_state.df.columns) # Index column editing is disabled by default, but for some reason becomes enabled when a filter selection is made, so we explicitly add it to the disabled list here to ensure against this
             st.session_state.disabled_columns.remove('JSON')
 
             st.session_state.running = False
@@ -320,12 +319,12 @@ if (st.session_state.opportunities):
         df_filtered = df_filtered.loc[df_filtered['ID'].isin(st.session_state.filtered_ids)]
     if (st.session_state.filtered_superevent_ids):
         df_filtered = df_filtered.loc[df_filtered['Super-event ID'].isin(st.session_state.filtered_superevent_ids)]
+    if (st.session_state.filtered_organizers):
+        df_filtered = df_filtered.loc[df_filtered['Organizer name'].isin(st.session_state.filtered_organizers)]
     if (st.session_state.filtered_names):
         df_filtered = df_filtered.loc[df_filtered['Name'].isin(st.session_state.filtered_names)]
     if (st.session_state.filtered_locations):
         df_filtered = df_filtered.loc[df_filtered['Location'].isin(st.session_state.filtered_locations)]
-    if (st.session_state.filtered_organizers):
-        df_filtered = df_filtered.loc[df_filtered['Organizer name'].isin(st.session_state.filtered_organizers)]
     if (st.session_state.filtered_times_range):
         df_filtered = df_filtered.loc[
                 (df_filtered['Time start'].apply(datetime.fromisoformat).apply(datetime.date) >= st.session_state.filtered_times_range[0])
@@ -350,7 +349,7 @@ if (st.session_state.opportunities):
             'Lon': st.column_config.NumberColumn(format='%.5f'), # 5 decimal places gives accuracy at the metre level
             # It is simpler to leave the time columns as strings rather than convert to DateTime objects, which
             # has issues when the strings are empty, so the following lines aren't needed but are left here to
-            # warn against a change that may take a while to figure out and ultimately lead to the same conclusion.
+            # warn against a change that may take a while to figure out and ultimately lead to the same conclusion
             #   'Time start': st.column_config.DatetimeColumn(format='YYYY-MM-DD HH:mm'),
             #   'Time end': st.column_config.DatetimeColumn(format='YYYY-MM-DD HH:mm'),
             'URL': st.column_config.LinkColumn(),
@@ -366,7 +365,7 @@ if (st.session_state.opportunities):
                 st.json(st.session_state.opportunities['items'][selected_ids[tab_idx]])
 
     # We use [Lon,Lat] rather than [Lat,Lon] in all of the following map code, as this is the required
-    # order for PyDeck, so just standardised in all cases of seeing these quantities:
+    # order for PyDeck, so just standardised in all cases of seeing these quantities
     map_data = st.session_state.df_edited.loc[
             st.session_state.df_edited['Lon'].notna()
         &   st.session_state.df_edited['Lat'].notna(),
@@ -379,7 +378,7 @@ if (st.session_state.opportunities):
             st.pydeck_chart(pdk.Deck(
                 map_style='road',
                 # This computed view doesn't create a fully encompassing bounding box for some reason, may need to
-                # work something out manually:
+                # work something out manually
                 initial_view_state=pdk.data_utils.viewport_helpers.compute_view(
                     map_data[['Lon', 'Lat']],
                 ),
@@ -413,7 +412,7 @@ if (st.session_state.opportunities):
                 }
             ))
             # The dedicated map widget is just a simplified convenience wrapper around PyDeck, and doesn't have
-            # tooltip functionality for e.g. showing location info over individual pins, hence not using this approach:
+            # tooltip functionality for e.g. showing location info over individual pins, hence not using this approach
             # st.map(
             #     st.session_state.df_edited.loc[
             #             st.session_state.df_edited['Lon'].notna()
