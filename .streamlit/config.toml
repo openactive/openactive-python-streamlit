@@ -2,6 +2,6 @@
 gatherUsageStats=false
 
 [theme]
-base='dark'
+base='light'
 primaryColor='#009ee3'
 font='sans serif'
