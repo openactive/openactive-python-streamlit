@@ -1,5 +1,6 @@
 import openactive as oa
 import pandas as pd
+import pydeck as pdk
 import streamlit as st
 from datetime import datetime
 
@@ -327,6 +328,9 @@ if (st.session_state.opportunities):
     if (len(df_filtered)>0):
         df_filtered.at[df_filtered.index[0], 'JSON'] = True
 
+    container_map = st.container()
+
+    st.subheader('Highlights')
     st.write('{} rows'.format(len(df_filtered)))
     st.session_state.df_edited = st.data_editor(
         df_filtered,
@@ -348,19 +352,72 @@ if (st.session_state.opportunities):
     )
 
     if (any(st.session_state.df_edited['JSON'])):
+        st.subheader('JSON')
         selected_idxs = list(st.session_state.df_edited.index[st.session_state.df_edited['JSON']].values.astype(str))
         selected_ids = list(st.session_state.df_edited['ID'][st.session_state.df_edited['JSON']].values.astype(str))
         for tab_idx,tab in enumerate(st.tabs(selected_idxs)):
             with tab:
                 st.json(st.session_state.opportunities['items'][selected_ids[tab_idx]])
 
-# --------------------------------------------------------------------------------------------------
+    # We use [Lon,Lat] rather than [Lat,Lon] in all of the following map code, as this is the required
+    # order for PyDeck, so just standardised in all cases of seeing these quantities:
+    map_data = st.session_state.df_edited.loc[
+            st.session_state.df_edited['Lon'].notna()
+        &   st.session_state.df_edited['Lat'].notna(),
+        ['Lon', 'Lat', 'Address']
+    ]
 
-# today = datetime.datetime.now()
-# filter_dates = st.date_input(
-#     'Filter dates',
-#     (today, today+datetime.timedelta(days=6)),
-#     today,
-#     format='DD.MM.YYYY',
-#     disabled=True,
-# )
+    if (len(map_data)!=0):
+        with container_map:
+            st.subheader('Geo')
+            st.pydeck_chart(pdk.Deck(
+                map_style='road',
+                # This computed view doesn't create a fully encompassing bounding box for some reason, may need to
+                # work something out manually:
+                initial_view_state=pdk.data_utils.viewport_helpers.compute_view(
+                    map_data[['Lon', 'Lat']],
+                ),
+                # initial_view_state=pdk.ViewState(
+                #     longitude=-3.0,
+                #     latitude=54.5,
+                #     zoom=4.4,
+                #     pitch=30,
+                # ),
+                layers=[
+                    pdk.Layer(
+                        'ScatterplotLayer',
+                        map_data,
+                        get_position=['Lon', 'Lat'],
+                        pickable=True,
+                        filled=True,
+                        stroked=True,
+                        radius_min_pixels=10,
+                        radius_max_pixels=10,
+                        line_width_min_pixels=1,
+                        line_width_max_pixels=1,
+                        get_fill_color=[0, 158, 277],
+                        get_line_color=[3, 102, 175],
+                        opacity=0.5,
+                        elevation_scale=4,
+                        elevation_range=[0, 1000],
+                    ),
+                ],
+                tooltip={
+                    'text': '{Address}',
+                }
+            ))
+            # The dedicated map widget is just a simplified convenience wrapper around PyDeck, and doesn't have
+            # tooltip functionality for e.g. showing addresses over individual pins, hence not using this approach:
+            # st.map(
+            #     st.session_state.df_edited.loc[
+            #             st.session_state.df_edited['Lon'].notna()
+            #         &   st.session_state.df_edited['Lat'].notna(),
+            #         ['Lon', 'Lat']
+            #     ],
+            #     use_container_width=True,
+            #     longitude='Lon',
+            #     latitude='Lat',
+            #     size=200,
+            #     color='#009ee3',
+            # )
+            st.divider()
