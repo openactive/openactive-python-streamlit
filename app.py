@@ -64,7 +64,7 @@ def clear_outputs():
     st.session_state.unique_superevent_ids = []
     st.session_state.unique_organizer_names = []
     st.session_state.unique_names = []
-    st.session_state.unique_addresses = []
+    st.session_state.unique_locations = []
     st.session_state.unique_times = []
     st.session_state.unique_times_range = ()
     clear_filters()
@@ -76,7 +76,7 @@ def clear_filters():
     st.session_state.filtered_superevent_ids = []
     st.session_state.filtered_organizers = []
     st.session_state.filtered_names = []
-    st.session_state.filtered_addresses = []
+    st.session_state.filtered_locations = []
     st.session_state.filtered_times_range = st.session_state.unique_times_range
 
 # --------------------------------------------------------------------------------------------------
@@ -92,7 +92,7 @@ def disable_button_clear_filters():
         st.session_state.filtered_superevent_ids +
         st.session_state.filtered_organizers +
         st.session_state.filtered_names +
-        st.session_state.filtered_addresses
+        st.session_state.filtered_locations
     ) > 0
 
     if (len(st.session_state.filtered_times_range)==0):
@@ -108,12 +108,18 @@ def disable_button_clear_filters():
 
 # --------------------------------------------------------------------------------------------------
 
-def set_address(address_in):
-    address_out = ''
-    for address_part in ['streetAddress', 'addressLocality', 'addressRegion', 'postalCode', 'addressCountry']:
-        try: address_out += address_in[address_part] + ('\n' if address_part!='addressCountry' else '')
-        except: pass
-    return address_out or None
+def set_location(location_in):
+    try: location_out = location_in['name'].strip()
+    except: location_out = ''
+
+    if ('address' in location_in.keys()):
+        for address_part in ['streetAddress', 'addressLocality', 'addressRegion', 'postalCode', 'addressCountry']:
+            try: address_part_found = location_in['address'][address_part].strip()
+            except: address_part_found = ''
+            if (address_part_found):
+                location_out += (',\n' if len(location_out)>0 else '') + address_part_found
+
+    return location_out or None
 
 # --------------------------------------------------------------------------------------------------
 
@@ -203,7 +209,7 @@ if (st.session_state.running):
                 'Organizer name': [None] * num_items,
                 'Organizer logo': [None] * num_items,
                 'Name': [None] * num_items,
-                'Address': [None] * num_items,
+                'Location': [None] * num_items,
                 'Lat': [None] * num_items,
                 'Lon': [None] * num_items,
                 'Time start': [None] * num_items,
@@ -225,7 +231,7 @@ if (st.session_state.running):
                         except: pass
                     try: st.session_state.df.at[item_idx, 'Name'] = item['data']['name']
                     except: pass
-                    try: st.session_state.df.at[item_idx, 'Address'] = set_address(item['data']['location']['address'])
+                    try: st.session_state.df.at[item_idx, 'Location'] = set_location(item['data']['location'])
                     except: pass
                     try: st.session_state.df.at[item_idx, 'Lat'] = float(item['data']['location']['geo']['latitude'])
                     except: pass
@@ -244,7 +250,7 @@ if (st.session_state.running):
             st.session_state.unique_superevent_ids = get_unique(st.session_state.df['Super-event ID'])
             st.session_state.unique_organizer_names = get_unique(st.session_state.df['Organizer name'])
             st.session_state.unique_names = get_unique(st.session_state.df['Name'])
-            st.session_state.unique_addresses = get_unique(st.session_state.df['Address'])
+            st.session_state.unique_locations = get_unique(st.session_state.df['Location'])
             st.session_state.unique_times = get_unique(pd.concat([st.session_state.df['Time start'], st.session_state.df['Time end']]))
             st.session_state.unique_times_range = (
                 datetime.fromisoformat(st.session_state.unique_times[0]).date(),
@@ -289,10 +295,10 @@ if (st.session_state.opportunities):
             disabled=len(st.session_state.unique_names)==0,
         )
         st.multiselect(
-            'Address',
-            st.session_state.unique_addresses,
-            key='filtered_addresses',
-            disabled=len(st.session_state.unique_addresses)==0,
+            'Location',
+            st.session_state.unique_locations,
+            key='filtered_locations',
+            disabled=len(st.session_state.unique_locations)==0,
         )
         st.date_input(
             'Time',
@@ -316,8 +322,8 @@ if (st.session_state.opportunities):
         df_filtered = df_filtered.loc[df_filtered['Super-event ID'].isin(st.session_state.filtered_superevent_ids)]
     if (st.session_state.filtered_names):
         df_filtered = df_filtered.loc[df_filtered['Name'].isin(st.session_state.filtered_names)]
-    if (st.session_state.filtered_addresses):
-        df_filtered = df_filtered.loc[df_filtered['Address'].isin(st.session_state.filtered_addresses)]
+    if (st.session_state.filtered_locations):
+        df_filtered = df_filtered.loc[df_filtered['Location'].isin(st.session_state.filtered_locations)]
     if (st.session_state.filtered_organizers):
         df_filtered = df_filtered.loc[df_filtered['Organizer name'].isin(st.session_state.filtered_organizers)]
     if (st.session_state.filtered_times_range):
@@ -364,7 +370,7 @@ if (st.session_state.opportunities):
     map_data = st.session_state.df_edited.loc[
             st.session_state.df_edited['Lon'].notna()
         &   st.session_state.df_edited['Lat'].notna(),
-        ['Lon', 'Lat', 'Address']
+        ['Lon', 'Lat', 'Location']
     ]
 
     if (len(map_data)!=0):
@@ -403,11 +409,11 @@ if (st.session_state.opportunities):
                     ),
                 ],
                 tooltip={
-                    'text': '{Address}',
+                    'text': '{Location}',
                 }
             ))
             # The dedicated map widget is just a simplified convenience wrapper around PyDeck, and doesn't have
-            # tooltip functionality for e.g. showing addresses over individual pins, hence not using this approach:
+            # tooltip functionality for e.g. showing location info over individual pins, hence not using this approach:
             # st.map(
             #     st.session_state.df_edited.loc[
             #             st.session_state.df_edited['Lon'].notna()
