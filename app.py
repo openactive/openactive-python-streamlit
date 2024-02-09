@@ -196,7 +196,10 @@ if (not st.session_state.initialised):
     with st.sidebar:
         # Calling get_feeds() automatically includes a spinner
         st.session_state.feeds = get_feeds()
-        st.session_state.providers = [(dataset_url,feeds_dataset[0]['publisherName']) for dataset_url,feeds_dataset in st.session_state.feeds.items()]
+        st.session_state.providers = sorted(
+            [(dataset_url,feeds_dataset[0]['publisherName'] or dataset_url) for dataset_url,feeds_dataset in st.session_state.feeds.items()],
+            key=lambda x: x[1].lower()
+        )
         st.session_state.initialised = True
         st.rerun()
 
