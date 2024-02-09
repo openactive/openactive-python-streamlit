@@ -172,7 +172,7 @@ with st.sidebar:
         on_change=clear_outputs,
         disabled=disable_input_controls(st.session_state.dataset_url_name==None),
     )
-    col1, col2, col3 = st.columns([1,2,2])
+    col1, col2 = st.columns([1,4])
     with col1:
         st.button(
             'Go',
@@ -193,7 +193,7 @@ with st.sidebar:
 # --------------------------------------------------------------------------------------------------
 
 if (not st.session_state.initialised):
-    with col3:
+    with st.sidebar:
         # Calling get_feeds() automatically includes a spinner
         st.session_state.feeds = get_feeds()
         st.session_state.providers = [(dataset_url,feeds_dataset[0]['publisherName']) for dataset_url,feeds_dataset in st.session_state.feeds.items()]
@@ -202,8 +202,18 @@ if (not st.session_state.initialised):
 
 # --------------------------------------------------------------------------------------------------
 
+if (    st.session_state.running
+    or  st.session_state.opportunities
+):
+    with st.sidebar:
+        st.divider()
+        st.write('Source')
+        st.write(st.session_state.feed_url)
+
+# --------------------------------------------------------------------------------------------------
+
 if (st.session_state.running):
-    with col3:
+    with st.sidebar:
         with st.spinner(''):
             st.session_state.opportunities = oa.get_opportunities(st.session_state.feed_url)
             num_items = len(st.session_state.opportunities['items'].keys())
