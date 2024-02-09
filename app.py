@@ -66,8 +66,8 @@ def clear_outputs():
     st.session_state.unique_organizer_names = []
     st.session_state.unique_names = []
     st.session_state.unique_locations = []
-    st.session_state.unique_times = []
-    st.session_state.unique_times_range = ()
+    st.session_state.unique_dates = []
+    st.session_state.unique_dates_range = ()
     clear_filters()
 
 # --------------------------------------------------------------------------------------------------
@@ -78,7 +78,7 @@ def clear_filters():
     st.session_state.filtered_organizers = []
     st.session_state.filtered_names = []
     st.session_state.filtered_locations = []
-    st.session_state.filtered_times_range = st.session_state.unique_times_range
+    st.session_state.filtered_dates_range = st.session_state.unique_dates_range
 
 # --------------------------------------------------------------------------------------------------
 
@@ -96,16 +96,16 @@ def disable_button_clear_filters():
         st.session_state.filtered_locations
     ) > 0
 
-    if (len(st.session_state.filtered_times_range)==0):
-        filtered_times_range_active = False
-    elif (len(st.session_state.filtered_times_range)==1):
-        filtered_times_range_active = True
-    elif (len(st.session_state.filtered_times_range)==2):
-        filtered_times_range_active = \
-            st.session_state.filtered_times_range[0]!=st.session_state.unique_times_range[0] \
-        or  st.session_state.filtered_times_range[1]!=st.session_state.unique_times_range[1]
+    if (len(st.session_state.filtered_dates_range)==0):
+        filtered_dates_range_active = False
+    elif (len(st.session_state.filtered_dates_range)==1):
+        filtered_dates_range_active = True
+    elif (len(st.session_state.filtered_dates_range)==2):
+        filtered_dates_range_active = \
+            st.session_state.filtered_dates_range[0]!=st.session_state.unique_dates_range[0] \
+        or  st.session_state.filtered_dates_range[1]!=st.session_state.unique_dates_range[1]
 
-    return not filtered_multiselects_active and not filtered_times_range_active
+    return not filtered_multiselects_active and not filtered_dates_range_active
 
 # --------------------------------------------------------------------------------------------------
 
@@ -124,8 +124,15 @@ def set_location(location_in):
 
 # --------------------------------------------------------------------------------------------------
 
-def set_time(datetime_isoformat):
-    return datetime.fromisoformat(datetime_isoformat).strftime('%Y-%m-%d %H:%M') if len(datetime_isoformat)>0 else None
+def set_datetime(datetime_isoformat):
+    try: return datetime.fromisoformat(datetime_isoformat).strftime('%Y-%m-%d %H:%M')
+    except: return None
+
+# --------------------------------------------------------------------------------------------------
+
+def set_date(datetime_isoformat):
+    try: return datetime.fromisoformat(datetime_isoformat).date().strftime('%Y-%m-%d')
+    except: return None
 
 # --------------------------------------------------------------------------------------------------
 
@@ -211,8 +218,8 @@ if (st.session_state.running):
                 'Location': [None] * num_items,
                 'Lat': [None] * num_items,
                 'Lon': [None] * num_items,
-                'Time start': [None] * num_items,
-                'Time end': [None] * num_items,
+                'Date/time start': [None] * num_items,
+                'Date/time end': [None] * num_items,
                 'URL': [None] * num_items,
             })
 
@@ -236,9 +243,9 @@ if (st.session_state.running):
                     except: pass
                     try: st.session_state.df.at[item_idx, 'Lon'] = float(item['data']['location']['geo']['longitude'])
                     except: pass
-                    try: st.session_state.df.at[item_idx, 'Time start'] = set_time(item['data']['startDate'])
+                    try: st.session_state.df.at[item_idx, 'Date/time start'] = set_datetime(item['data']['startDate'])
                     except: pass
-                    try: st.session_state.df.at[item_idx, 'Time end'] = set_time(item['data']['endDate'])
+                    try: st.session_state.df.at[item_idx, 'Date/time end'] = set_datetime(item['data']['endDate'])
                     except: pass
                     try: st.session_state.df.at[item_idx, 'URL'] = item['data']['url']
                     except: pass
@@ -250,12 +257,12 @@ if (st.session_state.running):
             st.session_state.unique_organizer_names = get_unique(st.session_state.df['Organizer name'])
             st.session_state.unique_names = get_unique(st.session_state.df['Name'])
             st.session_state.unique_locations = get_unique(st.session_state.df['Location'])
-            st.session_state.unique_times = get_unique(pd.concat([st.session_state.df['Time start'], st.session_state.df['Time end']]))
-            st.session_state.unique_times_range = (
-                datetime.fromisoformat(st.session_state.unique_times[0]).date(),
-                datetime.fromisoformat(st.session_state.unique_times[-1]).date()
-            ) if st.session_state.unique_times else ()
-            st.session_state.filtered_times_range = st.session_state.unique_times_range # We need to initialise this here, for some reason it doesn't do it when the associated filter widget is created
+            st.session_state.unique_dates = get_unique(pd.concat([st.session_state.df['Date/time start'].apply(set_date), st.session_state.df['Date/time end'].apply(set_date)]))
+            st.session_state.unique_dates_range = (
+                datetime.fromisoformat(st.session_state.unique_dates[0]).date(),
+                datetime.fromisoformat(st.session_state.unique_dates[-1]).date()
+            ) if st.session_state.unique_dates else ()
+            st.session_state.filtered_dates_range = st.session_state.unique_dates_range # We need to initialise this here, for some reason it doesn't do it when the associated filter widget is created
 
             st.session_state.disabled_columns = ['_index'] + list(st.session_state.df.columns) # Index column editing is disabled by default, but for some reason becomes enabled when a filter selection is made, so we explicitly add it to the disabled list here to ensure against this
             st.session_state.disabled_columns.remove('JSON')
@@ -300,12 +307,12 @@ if (st.session_state.opportunities):
             disabled=len(st.session_state.unique_locations)==0,
         )
         st.date_input(
-            'Time',
-            value=st.session_state.unique_times_range,
-            min_value=st.session_state.unique_times_range[0] if st.session_state.unique_times_range else datetime.now().date(),
-            max_value=st.session_state.unique_times_range[1] if st.session_state.unique_times_range else datetime.now().date(),
-            key='filtered_times_range',
-            disabled=len(st.session_state.unique_times_range)==0,
+            'Date',
+            value=st.session_state.unique_dates_range,
+            min_value=st.session_state.unique_dates_range[0] if st.session_state.unique_dates_range else datetime.now().date(),
+            max_value=st.session_state.unique_dates_range[1] if st.session_state.unique_dates_range else datetime.now().date(),
+            key='filtered_dates_range',
+            disabled=len(st.session_state.unique_dates_range)==0,
         )
         st.button(
             'Clear',
@@ -325,10 +332,10 @@ if (st.session_state.opportunities):
         df_filtered = df_filtered.loc[df_filtered['Name'].isin(st.session_state.filtered_names)]
     if (st.session_state.filtered_locations):
         df_filtered = df_filtered.loc[df_filtered['Location'].isin(st.session_state.filtered_locations)]
-    if (st.session_state.filtered_times_range):
+    if (st.session_state.filtered_dates_range):
         df_filtered = df_filtered.loc[
-                (df_filtered['Time start'].apply(datetime.fromisoformat).apply(datetime.date) >= st.session_state.filtered_times_range[0])
-            &   (df_filtered['Time end'].apply(datetime.fromisoformat).apply(datetime.date) <= st.session_state.filtered_times_range[len(st.session_state.filtered_times_range)-1])
+                (df_filtered['Date/time start'].apply(datetime.fromisoformat).apply(datetime.date) >= st.session_state.filtered_dates_range[0])
+            &   (df_filtered['Date/time end'].apply(datetime.fromisoformat).apply(datetime.date) <= st.session_state.filtered_dates_range[len(st.session_state.filtered_dates_range)-1])
         ]
     if (len(df_filtered)>0):
         df_filtered.at[df_filtered.index[0], 'JSON'] = True
@@ -350,8 +357,8 @@ if (st.session_state.opportunities):
             # It is simpler to leave the time columns as strings rather than convert to DateTime objects, which
             # has issues when the strings are empty, so the following lines aren't needed but are left here to
             # warn against a change that may take a while to figure out and ultimately lead to the same conclusion
-            #   'Time start': st.column_config.DatetimeColumn(format='YYYY-MM-DD HH:mm'),
-            #   'Time end': st.column_config.DatetimeColumn(format='YYYY-MM-DD HH:mm'),
+            #   'Date/time start': st.column_config.DatetimeColumn(format='YYYY-MM-DD HH:mm'),
+            #   'Date/time end': st.column_config.DatetimeColumn(format='YYYY-MM-DD HH:mm'),
             'URL': st.column_config.LinkColumn(),
         },
     )
