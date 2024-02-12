@@ -238,17 +238,17 @@ if (st.session_state.running):
 
             for item_idx,item in enumerate(st.session_state.opportunities['items'].values()):
                 if ('data' in item.keys()):
-                    try: st.session_state.df.at[item_idx, 'Super-event ID'] = item['data']['superEvent'].split('/')[-1]
+                    try: st.session_state.df.at[item_idx, 'Super-event ID'] = item['data']['superEvent'].split('/')[-1] # This may be type str or dict, depending on context. We are currently only looking for the str version, and the dict version should be passed over.
                     except: pass
-                    try: st.session_state.df.at[item_idx, 'Organizer name'] = item['data']['organizer']['name']
+                    try: st.session_state.df.at[item_idx, 'Organizer name'] = item['data']['organizer']['name'].strip()
                     except:
-                        try: st.session_state.df.at[item_idx, 'Organizer name'] = item['data']['superEvent']['organizer']['name']
+                        try: st.session_state.df.at[item_idx, 'Organizer name'] = item['data']['superEvent']['organizer']['name'].strip()
                         except: pass
-                    try: st.session_state.df.at[item_idx, 'Organizer logo'] = item['data']['organizer']['logo']['url']
+                    try: st.session_state.df.at[item_idx, 'Organizer logo'] = item['data']['organizer']['logo']['url'].strip()
                     except:
-                        try: st.session_state.df.at[item_idx, 'Organizer logo'] = item['data']['superEvent']['organizer']['logo']['url']
+                        try: st.session_state.df.at[item_idx, 'Organizer logo'] = item['data']['superEvent']['organizer']['logo']['url'].strip()
                         except: pass
-                    try: st.session_state.df.at[item_idx, 'Name'] = item['data']['name']
+                    try: st.session_state.df.at[item_idx, 'Name'] = item['data']['name'].strip()
                     except: pass
                     try: st.session_state.df.at[item_idx, 'Location'] = set_location(item['data']['location'])
                     except: pass
@@ -256,11 +256,11 @@ if (st.session_state.running):
                     except: pass
                     try: st.session_state.df.at[item_idx, 'Lon'] = float(item['data']['location']['geo']['longitude'])
                     except: pass
-                    try: st.session_state.df.at[item_idx, 'Date/time start'] = set_datetime(item['data']['startDate'])
+                    try: st.session_state.df.at[item_idx, 'Date/time start'] = set_datetime(item['data']['startDate'].strip())
                     except: pass
-                    try: st.session_state.df.at[item_idx, 'Date/time end'] = set_datetime(item['data']['endDate'])
+                    try: st.session_state.df.at[item_idx, 'Date/time end'] = set_datetime(item['data']['endDate'].strip())
                     except: pass
-                    try: st.session_state.df.at[item_idx, 'URL'] = item['data']['url']
+                    try: st.session_state.df.at[item_idx, 'URL'] = item['data']['url'].strip()
                     except: pass
 
             st.session_state.df.index = range(1, num_items+1)
