@@ -57,17 +57,21 @@ def clear_inputs():
 # --------------------------------------------------------------------------------------------------
 
 def clear_outputs():
-    st.session_state.opportunities = None
-    st.session_state.df = None
-    st.session_state.unique_ids = []
-    st.session_state.unique_superevent_ids = []
-    st.session_state.unique_organizer_names = []
-    st.session_state.unique_organizer_names_logos = []
-    st.session_state.unique_names = []
-    st.session_state.unique_locations = []
-    st.session_state.unique_dates = []
-    st.session_state.unique_dates_range = ()
-    clear_filters()
+    if (st.session_state.got_data):
+        st.session_state.opportunities = None
+        st.session_state.df = None
+        st.session_state.unique_ids = []
+        st.session_state.unique_superevent_ids = []
+        st.session_state.unique_organizer_names = []
+        st.session_state.unique_organizer_names_logos = []
+        st.session_state.unique_names = []
+        st.session_state.unique_locations = []
+        st.session_state.unique_dates = []
+        st.session_state.unique_dates_range = ()
+        st.session_state.got_data = False
+    if (st.session_state.got_filters):
+        clear_filters()
+        st.session_state.got_filters = False
 
 # --------------------------------------------------------------------------------------------------
 
@@ -136,11 +140,11 @@ def get_unique(iterable):
 
 if ('initialised' not in st.session_state):
     st.session_state.initialised = False
+    st.session_state.running = False
+    st.session_state.got_data = False
+    st.session_state.got_filters = False
     st.session_state.feeds = None
     st.session_state.providers = None
-    clear()
-elif (not st.session_state.feed_url):
-    clear_outputs()
 
 # --------------------------------------------------------------------------------------------------
 
@@ -199,7 +203,7 @@ if (not st.session_state.initialised):
 # --------------------------------------------------------------------------------------------------
 
 if (    st.session_state.running
-    or  st.session_state.opportunities
+    or  st.session_state.got_data
 ):
     with st.sidebar:
         st.divider()
@@ -280,11 +284,12 @@ if (st.session_state.running):
             st.session_state.disabled_columns.remove('JSON')
 
             st.session_state.running = False
+            st.session_state.got_data = True
             st.rerun()
 
 # --------------------------------------------------------------------------------------------------
 
-if (st.session_state.opportunities):
+if (st.session_state.got_data):
     with st.sidebar:
         st.divider()
         st.write('Filters')
@@ -332,6 +337,7 @@ if (st.session_state.opportunities):
             on_click=clear_filters,
             disabled=disable_button_clear_filters(),
         )
+        st.session_state.got_filters = True
 
     df_filtered = st.session_state.df
     if (st.session_state.filtered_ids):
