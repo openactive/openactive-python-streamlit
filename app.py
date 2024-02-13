@@ -37,14 +37,14 @@ def get_feeds():
 
 # --------------------------------------------------------------------------------------------------
 
-def go(feed_url=None):
-    st.session_state.running = True
+def go():
     clear_outputs()
+    st.session_state.started = True
+    st.session_state.running = True
 
 # --------------------------------------------------------------------------------------------------
 
 def clear():
-    st.session_state.running = False
     clear_inputs()
     clear_outputs()
 
@@ -57,6 +57,10 @@ def clear_inputs():
 # --------------------------------------------------------------------------------------------------
 
 def clear_outputs():
+    if (st.session_state.started):
+        st.session_state.started = False
+    if (st.session_state.running):
+        st.session_state.running = False
     if (st.session_state.got_data):
         st.session_state.opportunities = None
         st.session_state.df = None
@@ -108,7 +112,7 @@ def disable_button_clear_filters():
             st.session_state.filtered_dates_range[0]!=st.session_state.unique_dates_range[0] \
         or  st.session_state.filtered_dates_range[1]!=st.session_state.unique_dates_range[1]
 
-    return not filtered_multiselects_active and not filtered_dates_range_active
+    return (not filtered_multiselects_active) and (not filtered_dates_range_active)
 
 # --------------------------------------------------------------------------------------------------
 
@@ -140,6 +144,7 @@ def get_unique(iterable):
 
 if ('initialised' not in st.session_state):
     st.session_state.initialised = False
+    st.session_state.started = False
     st.session_state.running = False
     st.session_state.got_data = False
     st.session_state.got_filters = False
@@ -175,14 +180,13 @@ with st.sidebar:
             'Go',
             key='button_go',
             on_click=go,
-            args=[st.session_state.feed_url],
             # type='primary', # Making this primary gives a little flicker when clicked due to the change in disabled state
             disabled=disable_input_controls(st.session_state.feed_url==None),
         )
     with col2:
         st.button(
             'Clear',
-            key='button_clear_inputs',
+            key='button_clear',
             on_click=clear,
             disabled=st.session_state.dataset_url_name==None,
         )
@@ -202,13 +206,15 @@ if (not st.session_state.initialised):
 
 # --------------------------------------------------------------------------------------------------
 
-if (    st.session_state.running
-    or  st.session_state.got_data
-):
+if (st.session_state.started):
     with st.sidebar:
         st.divider()
-        st.write('Source')
+        st.write('Feed URL')
         st.write(st.session_state.feed_url)
+        if (    (not st.session_state.running)
+            and (not st.session_state.got_data)
+        ):
+            st.info('No data in this feed')
 
 # --------------------------------------------------------------------------------------------------
 
@@ -217,6 +223,10 @@ if (st.session_state.running):
         with st.spinner(''):
             st.session_state.opportunities = oa.get_opportunities(st.session_state.feed_url)
             num_items = len(st.session_state.opportunities['items'].keys())
+
+            if (num_items==0):
+                st.session_state.running = False
+                st.rerun()
 
             st.session_state.df = pd.DataFrame({
                 'JSON': [False] * num_items,
