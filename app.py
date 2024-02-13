@@ -59,11 +59,10 @@ def clear_inputs():
 def clear_outputs():
     st.session_state.opportunities = None
     st.session_state.df = None
-    st.session_state.df_filtered = None
-    st.session_state.df_edited = None
     st.session_state.unique_ids = []
     st.session_state.unique_superevent_ids = []
     st.session_state.unique_organizer_names = []
+    st.session_state.unique_organizer_names_logos = []
     st.session_state.unique_names = []
     st.session_state.unique_locations = []
     st.session_state.unique_dates = []
@@ -262,6 +261,7 @@ if (st.session_state.running):
             st.session_state.unique_ids = get_unique(st.session_state.df['ID'])
             st.session_state.unique_superevent_ids = get_unique(st.session_state.df['Super-event ID'])
             st.session_state.unique_organizer_names = get_unique(st.session_state.df['Organizer name'])
+            st.session_state.unique_organizer_names_logos = get_unique(zip(st.session_state.df['Organizer name'], st.session_state.df['Organizer logo']))
             st.session_state.unique_names = get_unique(st.session_state.df['Name'])
             st.session_state.unique_locations = get_unique(st.session_state.df['Location'])
             st.session_state.unique_dates = get_unique(pd.concat([
@@ -272,7 +272,9 @@ if (st.session_state.running):
                 st.session_state.unique_dates[0],
                 st.session_state.unique_dates[-1]
             ) if st.session_state.unique_dates else ()
-            st.session_state.filtered_dates_range = st.session_state.unique_dates_range # We need to initialise this here, for some reason it doesn't do it when the associated filter widget is created
+
+            st.session_state.df.rename(columns={'Organizer name': 'Organizer'}, inplace=True)
+            del(st.session_state.df['Organizer logo'])
 
             st.session_state.disabled_columns = ['_index'] + list(st.session_state.df.columns) # Index column editing is disabled by default, but for some reason becomes enabled when a filter selection is made, so we explicitly add it to the disabled list here to ensure against this
             st.session_state.disabled_columns.remove('JSON')
@@ -337,7 +339,7 @@ if (st.session_state.opportunities):
     if (st.session_state.filtered_superevent_ids):
         df_filtered = df_filtered.loc[df_filtered['Super-event ID'].isin(st.session_state.filtered_superevent_ids)]
     if (st.session_state.filtered_organizers):
-        df_filtered = df_filtered.loc[df_filtered['Organizer name'].isin(st.session_state.filtered_organizers)]
+        df_filtered = df_filtered.loc[df_filtered['Organizer'].isin(st.session_state.filtered_organizers)]
     if (st.session_state.filtered_names):
         df_filtered = df_filtered.loc[df_filtered['Name'].isin(st.session_state.filtered_names)]
     if (st.session_state.filtered_locations):
@@ -350,6 +352,12 @@ if (st.session_state.opportunities):
     if (len(df_filtered)>0):
         df_filtered.at[df_filtered.index[0], 'JSON'] = True
 
+    if (    len(st.session_state.unique_organizer_names_logos)==1
+        and st.session_state.unique_organizer_names_logos[0][1]
+    ):
+        st.image(st.session_state.unique_organizer_names_logos[0][1], width=150)
+        st.divider()
+
     container_map = st.container()
 
     st.subheader('Highlights')
@@ -361,7 +369,6 @@ if (st.session_state.opportunities):
         column_config={
             '_index': st.column_config.NumberColumn(label='Row'),
             'JSON': st.column_config.CheckboxColumn(),
-            'Organizer logo': st.column_config.ImageColumn(),
             'Lat': st.column_config.NumberColumn(format='%.5f'), # 5 decimal places gives accuracy at the metre level
             'Lon': st.column_config.NumberColumn(format='%.5f'), # 5 decimal places gives accuracy at the metre level
             'Date/time start': st.column_config.DatetimeColumn(format='YYYY-MM-DD HH:mm'),
