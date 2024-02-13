@@ -117,17 +117,18 @@ def disable_button_clear_filters():
 # --------------------------------------------------------------------------------------------------
 
 def set_location(location_in):
-    try: location_out = location_in['name'].strip()
-    except: location_out = ''
+    try: location_out = [location_in['name'].strip()]
+    except: location_out = []
 
     if ('address' in location_in.keys()):
-        for address_part in ['streetAddress', 'addressLocality', 'addressRegion', 'postalCode', 'addressCountry']:
-            try: address_part_found = location_in['address'][address_part].strip()
-            except: address_part_found = ''
-            if (address_part_found):
-                location_out += (',\n' if len(location_out)>0 else '') + address_part_found
+        for address_parts_type in ['streetAddress', 'addressLocality', 'addressRegion', 'postalCode', 'addressCountry']:
+            try: address_parts = location_in['address'][address_parts_type].strip().split(',')
+            except: address_parts = []
+            for address_part in address_parts:
+                if (address_part not in location_out):
+                    location_out.append(address_part)
 
-    return location_out or None
+    return ',\n'.join(location_out) or None
 
 # --------------------------------------------------------------------------------------------------
 
@@ -138,7 +139,7 @@ def set_datetime(datetime_isoformat):
 # --------------------------------------------------------------------------------------------------
 
 def get_unique(iterable):
-    return sorted(set([x for x in iterable if x not in [None, '']]))
+    return sorted(set([x for x in iterable if x]))
 
 # --------------------------------------------------------------------------------------------------
 
