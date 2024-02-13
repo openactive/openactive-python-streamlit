@@ -83,7 +83,7 @@ def clear_filters():
 # --------------------------------------------------------------------------------------------------
 
 def disable_input_controls(default=False):
-    return True if st.session_state.running else default
+    return st.session_state.running or default
 
 # --------------------------------------------------------------------------------------------------
 
