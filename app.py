@@ -125,19 +125,13 @@ def set_location(location_in):
 # --------------------------------------------------------------------------------------------------
 
 def set_datetime(datetime_isoformat):
-    try: return datetime.fromisoformat(datetime_isoformat).strftime('%Y-%m-%d %H:%M')
+    try: return datetime.fromisoformat(datetime_isoformat)
     except: return None
 
 # --------------------------------------------------------------------------------------------------
 
-def set_date(datetime_isoformat):
-    try: return datetime.fromisoformat(datetime_isoformat).date().strftime('%Y-%m-%d')
-    except: return None
-
-# --------------------------------------------------------------------------------------------------
-
-def get_unique(datalist):
-    return sorted(set([x for x in datalist if type(x)==str and x.strip()]))
+def get_unique(iterable):
+    return sorted(set([x for x in iterable if x not in [None, '']]))
 
 # --------------------------------------------------------------------------------------------------
 
@@ -270,10 +264,13 @@ if (st.session_state.running):
             st.session_state.unique_organizer_names = get_unique(st.session_state.df['Organizer name'])
             st.session_state.unique_names = get_unique(st.session_state.df['Name'])
             st.session_state.unique_locations = get_unique(st.session_state.df['Location'])
-            st.session_state.unique_dates = get_unique(pd.concat([st.session_state.df['Date/time start'].apply(set_date), st.session_state.df['Date/time end'].apply(set_date)]))
+            st.session_state.unique_dates = get_unique(pd.concat([
+                (st.session_state.df['Date/time start'].loc[st.session_state.df['Date/time start'].notnull()]).apply(datetime.date),
+                (st.session_state.df['Date/time end'].loc[st.session_state.df['Date/time end'].notnull()]).apply(datetime.date)
+            ]))
             st.session_state.unique_dates_range = (
-                datetime.fromisoformat(st.session_state.unique_dates[0]).date(),
-                datetime.fromisoformat(st.session_state.unique_dates[-1]).date()
+                st.session_state.unique_dates[0],
+                st.session_state.unique_dates[-1]
             ) if st.session_state.unique_dates else ()
             st.session_state.filtered_dates_range = st.session_state.unique_dates_range # We need to initialise this here, for some reason it doesn't do it when the associated filter widget is created
 
@@ -347,8 +344,8 @@ if (st.session_state.opportunities):
         df_filtered = df_filtered.loc[df_filtered['Location'].isin(st.session_state.filtered_locations)]
     if (st.session_state.filtered_dates_range):
         df_filtered = df_filtered.loc[
-                (df_filtered['Date/time start'].apply(datetime.fromisoformat).apply(datetime.date) >= st.session_state.filtered_dates_range[0])
-            &   (df_filtered['Date/time end'].apply(datetime.fromisoformat).apply(datetime.date) <= st.session_state.filtered_dates_range[len(st.session_state.filtered_dates_range)-1])
+                (df_filtered['Date/time start'].apply(datetime.date) >= st.session_state.filtered_dates_range[0])
+            &   (df_filtered['Date/time end'].apply(datetime.date) <= st.session_state.filtered_dates_range[len(st.session_state.filtered_dates_range)-1])
         ]
     if (len(df_filtered)>0):
         df_filtered.at[df_filtered.index[0], 'JSON'] = True
@@ -367,11 +364,8 @@ if (st.session_state.opportunities):
             'Organizer logo': st.column_config.ImageColumn(),
             'Lat': st.column_config.NumberColumn(format='%.5f'), # 5 decimal places gives accuracy at the metre level
             'Lon': st.column_config.NumberColumn(format='%.5f'), # 5 decimal places gives accuracy at the metre level
-            # It is simpler to leave the time columns as strings rather than convert to DateTime objects, which
-            # has issues when the strings are empty, so the following lines aren't needed but are left here to
-            # warn against a change that may take a while to figure out and ultimately lead to the same conclusion
-            #   'Date/time start': st.column_config.DatetimeColumn(format='YYYY-MM-DD HH:mm'),
-            #   'Date/time end': st.column_config.DatetimeColumn(format='YYYY-MM-DD HH:mm'),
+            'Date/time start': st.column_config.DatetimeColumn(format='YYYY-MM-DD HH:mm'),
+            'Date/time end': st.column_config.DatetimeColumn(format='YYYY-MM-DD HH:mm'),
             'URL': st.column_config.LinkColumn(),
         },
     )
