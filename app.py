@@ -354,7 +354,7 @@ if (st.session_state.opportunities):
 
     st.subheader('Highlights')
     st.write('{} rows'.format(len(df_filtered)))
-    st.session_state.df_edited = st.data_editor(
+    df_edited = st.data_editor(
         df_filtered,
         use_container_width=True,
         disabled=st.session_state.disabled_columns,
@@ -370,19 +370,19 @@ if (st.session_state.opportunities):
         },
     )
 
-    if (any(st.session_state.df_edited['JSON'])):
+    if (any(df_edited['JSON'])):
         st.subheader('JSON')
-        selected_idxs = list(st.session_state.df_edited.index[st.session_state.df_edited['JSON']].values.astype(str))
-        selected_ids = list(st.session_state.df_edited['ID'][st.session_state.df_edited['JSON']].values.astype(str))
-        for tab_idx,tab in enumerate(st.tabs(selected_idxs)):
+        selected_idxs = list(df_edited.index[df_edited['JSON']])
+        selected_ids = list(df_edited['ID'][df_edited['JSON']])
+        for tab_idx,tab in enumerate(st.tabs([str(x) for x in selected_idxs])):
             with tab:
                 st.json(st.session_state.opportunities['items'][selected_ids[tab_idx]])
 
     # We use [Lon,Lat] rather than [Lat,Lon] in all of the following map code, as this is the required
     # order for PyDeck, so just standardised in all cases of seeing these quantities
-    map_data = st.session_state.df_edited.loc[
-            st.session_state.df_edited['Lon'].notna()
-        &   st.session_state.df_edited['Lat'].notna(),
+    map_data = df_edited.loc[
+            df_edited['Lon'].notna()
+        &   df_edited['Lat'].notna(),
         ['Lon', 'Lat', 'Location']
     ]
 
@@ -428,9 +428,9 @@ if (st.session_state.opportunities):
             # The dedicated map widget is just a simplified convenience wrapper around PyDeck, and doesn't have
             # tooltip functionality for e.g. showing location info over individual pins, hence not using this approach
             # st.map(
-            #     st.session_state.df_edited.loc[
-            #             st.session_state.df_edited['Lon'].notna()
-            #         &   st.session_state.df_edited['Lat'].notna(),
+            #     df_edited.loc[
+            #             df_edited['Lon'].notna()
+            #         &   df_edited['Lat'].notna(),
             #         ['Lon', 'Lat']
             #     ],
             #     use_container_width=True,
