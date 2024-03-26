@@ -103,16 +103,16 @@ def disable_button_clear_filters():
         st.session_state.filtered_locations
     ) > 0
 
-    if (len(st.session_state.filtered_dates_range)==0):
+    if (len(st.session_state.filtered_dates_range) == 0):
         filtered_dates_range_active = False
-    elif (len(st.session_state.filtered_dates_range)==1):
+    elif (len(st.session_state.filtered_dates_range) == 1):
         filtered_dates_range_active = True
-    elif (len(st.session_state.filtered_dates_range)==2):
+    elif (len(st.session_state.filtered_dates_range) == 2):
         filtered_dates_range_active = \
-            st.session_state.filtered_dates_range[0]!=st.session_state.unique_dates_range[0] \
-        or  st.session_state.filtered_dates_range[1]!=st.session_state.unique_dates_range[1]
+            (st.session_state.filtered_dates_range[0] != st.session_state.unique_dates_range[0]) \
+        or  (st.session_state.filtered_dates_range[1] != st.session_state.unique_dates_range[1])
 
-    return (not filtered_multiselects_active) and (not filtered_dates_range_active)
+    return ((not filtered_multiselects_active) and (not filtered_dates_range_active))
 
 # --------------------------------------------------------------------------------------------------
 
@@ -174,7 +174,7 @@ with st.sidebar:
         format_func=lambda x: x.split('/')[-1],
         index=None,
         on_change=clear_outputs,
-        disabled=disable_input_controls(st.session_state.dataset_url_name==None),
+        disabled=disable_input_controls(st.session_state.dataset_url_name == None),
     )
     col1, col2 = st.columns([1,4])
     with col1:
@@ -183,14 +183,14 @@ with st.sidebar:
             key='button_go',
             on_click=go,
             # type='primary', # Making this primary gives a little flicker when clicked due to the change in disabled state
-            disabled=disable_input_controls(st.session_state.feed_url==None),
+            disabled=disable_input_controls(st.session_state.feed_url == None),
         )
     with col2:
         st.button(
             'Clear',
             key='button_clear',
             on_click=clear,
-            disabled=st.session_state.dataset_url_name==None,
+            disabled=(st.session_state.dataset_url_name == None),
         )
 
 # --------------------------------------------------------------------------------------------------
@@ -251,7 +251,7 @@ if (st.session_state.running):
             st.session_state.opportunities = oa.get_opportunities(st.session_state.feed_url)
             num_items = len(st.session_state.opportunities['items'].keys())
 
-            if (num_items==0):
+            if (num_items == 0):
                 st.session_state.running = False
                 st.rerun()
 
@@ -337,39 +337,39 @@ if (st.session_state.got_data):
             'ID',
             st.session_state.unique_ids,
             key='filtered_ids',
-            disabled=len(st.session_state.unique_ids)==0,
+            disabled=(len(st.session_state.unique_ids) == 0),
         )
         st.multiselect(
             'Super-event ID',
             st.session_state.unique_superevent_ids,
             key='filtered_superevent_ids',
-            disabled=len(st.session_state.unique_superevent_ids)==0,
+            disabled=(len(st.session_state.unique_superevent_ids) == 0),
         )
         st.multiselect(
             'Organiser', # Note British English for display
             st.session_state.unique_organizer_names,
             key='filtered_organizers',
-            disabled=len(st.session_state.unique_organizer_names)==0,
+            disabled=(len(st.session_state.unique_organizer_names) == 0),
         )
         st.multiselect(
             'Name',
             st.session_state.unique_names,
             key='filtered_names',
-            disabled=len(st.session_state.unique_names)==0,
+            disabled=(len(st.session_state.unique_names) == 0),
         )
         st.multiselect(
             'Location',
             st.session_state.unique_locations,
             key='filtered_locations',
-            disabled=len(st.session_state.unique_locations)==0,
+            disabled=(len(st.session_state.unique_locations) == 0),
         )
         st.date_input(
             'Date',
             value=st.session_state.unique_dates_range,
-            min_value=st.session_state.unique_dates_range[0] if st.session_state.unique_dates_range else datetime.now().date(),
-            max_value=st.session_state.unique_dates_range[1] if st.session_state.unique_dates_range else datetime.now().date(),
+            min_value=(st.session_state.unique_dates_range[0] if st.session_state.unique_dates_range else datetime.now().date()),
+            max_value=(st.session_state.unique_dates_range[1] if st.session_state.unique_dates_range else datetime.now().date()),
             key='filtered_dates_range',
-            disabled=len(st.session_state.unique_dates_range)==0,
+            disabled=(len(st.session_state.unique_dates_range) == 0),
         )
         st.button(
             'Clear',
@@ -398,8 +398,8 @@ if (st.session_state.got_data):
     if (len(df_filtered)>0):
         df_filtered.at[df_filtered.index[0], 'JSON'] = True
 
-    if (    len(st.session_state.unique_organizer_names_logos)==1
-        and st.session_state.unique_organizer_names_logos[0][1]
+    if (    (len(st.session_state.unique_organizer_names_logos) == 1)
+        and (st.session_state.unique_organizer_names_logos[0][1])
     ):
         st.image(st.session_state.unique_organizer_names_logos[0][1], width=150)
         st.divider()
@@ -445,7 +445,7 @@ if (st.session_state.got_data):
         ['Lon', 'Lat', 'Location']
     ]
 
-    if (len(map_data)!=0):
+    if (len(map_data) != 0):
         with container_map:
             st.subheader(
                 'Geo',
