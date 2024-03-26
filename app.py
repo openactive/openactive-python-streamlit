@@ -288,7 +288,7 @@ if (st.session_state.running):
                 st.session_state.unique_dates[-1]
             ) if st.session_state.unique_dates else ()
 
-            st.session_state.df.rename(columns={'Organizer name': 'Organizer'}, inplace=True)
+            st.session_state.df.rename(columns={'Organizer name': 'Organiser'}, inplace=True) # Note British English for display
             del(st.session_state.df['Organizer logo'])
 
             st.session_state.disabled_columns = ['_index'] + list(st.session_state.df.columns) # Index column editing is disabled by default, but for some reason becomes enabled when a filter selection is made, so we explicitly add it to the disabled list here to ensure against this
@@ -317,7 +317,7 @@ if (st.session_state.got_data):
             disabled=len(st.session_state.unique_superevent_ids)==0,
         )
         st.multiselect(
-            'Organizer',
+            'Organiser', # Note British English for display
             st.session_state.unique_organizer_names,
             key='filtered_organizers',
             disabled=len(st.session_state.unique_organizer_names)==0,
@@ -356,7 +356,7 @@ if (st.session_state.got_data):
     if (st.session_state.filtered_superevent_ids):
         df_filtered = df_filtered.loc[df_filtered['Super-event ID'].isin(st.session_state.filtered_superevent_ids)]
     if (st.session_state.filtered_organizers):
-        df_filtered = df_filtered.loc[df_filtered['Organizer'].isin(st.session_state.filtered_organizers)]
+        df_filtered = df_filtered.loc[df_filtered['Organiser'].isin(st.session_state.filtered_organizers)]
     if (st.session_state.filtered_names):
         df_filtered = df_filtered.loc[df_filtered['Name'].isin(st.session_state.filtered_names)]
     if (st.session_state.filtered_locations):
