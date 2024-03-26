@@ -1,7 +1,7 @@
 [browser]
-gatherUsageStats=false
+gatherUsageStats = false
 
 [theme]
-base='light'
-primaryColor='#009ee3'
-font='sans serif'
+base = 'light'
+primaryColor = '#009ee3'
+font = 'sans serif'
