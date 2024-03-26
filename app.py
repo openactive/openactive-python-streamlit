@@ -156,6 +156,7 @@ if ('initialised' not in st.session_state):
 
 with st.sidebar:
     st.image('https://openactive.io/brand-assets/openactive-logo-large.png')
+    show_info = st.toggle('Info', True)
     st.divider()
     st.selectbox(
         'Data Provider',
@@ -194,6 +195,28 @@ with st.sidebar:
 
 # --------------------------------------------------------------------------------------------------
 
+if show_info:
+    st.title('Welcome')
+    st.markdown(
+        '''
+        *The following is extracted from the app [readme file](https://github.com/openactive/openactive-python-streamlit/blob/main/README.md), which contains further information if needed. Use the "Info" toggle in the sidebar to hide or show this message.*
+
+        This [Streamlit](https://streamlit.io/) app is an experimental tool for familiarising all users with OpenActive data, and for helping Python users to get acquainted with the standalone OpenActive Python package, which is available at both [PyPI](https://pypi.org/project/openactive/) and [Conda-Forge](https://anaconda.org/conda-forge/openactive). It allows a user to select and read an OpenActive feed, and displays output in a map (if coordinate data are available), a table, and JSON. Filters are also included to select items based on ID, organiser, name, location and date.
+
+        All code for both [the package](https://github.com/openactive/openactive-python/blob/main/src/openactive/openactive.py) and [this app](https://github.com/openactive/openactive-python-streamlit/blob/main/app.py) is open sourced under the MIT licence, so feel free to make a copy and modify as you like, ensuring that the original licence content is included in anything that you publish. The code has been intentionally kept minimal in order to be digestible, while still providing enough functionality to quickly get past common starting barriers.
+
+        Want an idea for a project? How about taking this app and extending it to read and display a matched pair of feeds together i.e. a Session Series feed with its partner Scheduled Sessions feed. There should be enough information in the package [readme file](https://github.com/openactive/openactive-python/blob/main/README.md) to get you going. See the fully fledged live [OpenActive Visualiser](https://visualiser.openactive.io/) (a JavaScript app) for an idea of how something like this functions in practice.
+
+        Note that it is not recommended to deploy this app on the Streamlit Community Cloud, unless the ingested data is heavily truncated. This is because there is often a lot of data in an OpenActive feed, which could rapidly saturate the memory quota of a cloud deployment, especially if you have multiple concurrent users. It is therefore best to keep this tool for download and use on individual machines using their own memory.
+
+        It will take a couple of minutes to initialise the app with the current list of OpenActive feeds. You can open multiple windows or tabs at the same app location that all use the same base process, so they don't all need to be individually initialised. This allows you to read in and observe multiple datasets simultaneously, if needed.
+
+        To use, simply choose a feed from the sidebar, which is separated into "Data Provider" and "Data Type" fields, and click the "Go" button. Note that the number of pages in a given feed is not known in advance, and so the time required to read all associated pages can vary greatly between one feed and another, from a number of seconds to a number of minutes. If a feed is taking too long to read and you would like to try something else, you can click the "Clear" button at any time to cancel the current task and start again.
+        '''
+    )
+
+# --------------------------------------------------------------------------------------------------
+
 if (not st.session_state.initialised):
     with st.sidebar:
         # Calling get_feeds() automatically includes a spinner
@@ -210,8 +233,11 @@ if (not st.session_state.initialised):
 if (st.session_state.started):
     with st.sidebar:
         st.divider()
-        st.write('Feed URL')
-        st.write(st.session_state.feed_url)
+        st.markdown(
+            'Feed URL',
+            help='This is the location from which the displayed data is sourced. To obtain all of the data, this page and its chain of "next" pages are all visited in turn, until the final page with no further entries is met.'
+        )
+        st.markdown(st.session_state.feed_url)
         if (    (not st.session_state.running)
             and (not st.session_state.got_data)
         ):
@@ -303,7 +329,10 @@ if (st.session_state.running):
 if (st.session_state.got_data):
     with st.sidebar:
         st.divider()
-        st.write('Filters')
+        st.markdown(
+            'Filters',
+            help='This is intentionally not an adaptive filter system, so choosing one option from one filter will not restrict the other options in other filters, all options will remain with respect to the full dataset. If this wasn\'t so, then filter selection couldn\'t be easily adjusted after the initial selection.'
+        )
         st.multiselect(
             'ID',
             st.session_state.unique_ids,
@@ -377,8 +406,11 @@ if (st.session_state.got_data):
 
     container_map = st.container()
 
-    st.subheader('Highlights')
-    st.write('{} rows'.format(len(df_filtered)))
+    st.subheader(
+        'Highlights',
+        help='This table shows a number of "highlight" fields from the full JSON data for each feed item. Some feeds will have no entries at all for certain table fields, but for consistency the table fields remain fixed for all feeds. Many feeds actually come in pairs, one for super-event data (e.g. Session Series) and one for sub-event data (e.g. Scheduled Sessions), and getting a full picture requires a read of both, as each feed will specialise in different table fields. This app does not allow for two feeds to be read simultaneously in one app session, but you can open another browser window or tab to run a parallel app session to read another feed if needed.'
+    )
+    st.markdown('{} rows'.format(len(df_filtered)))
     df_edited = st.data_editor(
         df_filtered,
         use_container_width=True,
@@ -395,7 +427,10 @@ if (st.session_state.got_data):
     )
 
     if (any(df_edited['JSON'])):
-        st.subheader('JSON')
+        st.subheader(
+            'JSON',
+            help='These tabs correspond to the table rows which are selected in the "JSON" column, and they are labelled by table row number. They contain the full JSON data for their associated feed items, only a subset of which is seen in the table.'
+        )
         selected_idxs = list(df_edited.index[df_edited['JSON']])
         selected_ids = list(df_edited['ID'][df_edited['JSON']])
         for tab_idx,tab in enumerate(st.tabs([str(x) for x in selected_idxs])):
@@ -412,7 +447,10 @@ if (st.session_state.got_data):
 
     if (len(map_data)!=0):
         with container_map:
-            st.subheader('Geo')
+            st.subheader(
+                'Geo',
+                help='This map shows locations with coordinate data. Zoom in and out with your mouse scroll function, and hover over the pins to show pop-up boxes of the location names and addresses. Note that the initial zoom may not capture all pins that are actually present, so it\'s worth zooming out a bit to check for others that aren\'t initially seen.'
+            )
             st.pydeck_chart(pdk.Deck(
                 map_style='road',
                 # This computed view doesn't create a fully encompassing bounding box for some reason, may need to
