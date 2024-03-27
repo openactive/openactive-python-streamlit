@@ -5,3 +5,6 @@ gatherUsageStats = false
 base = 'light'
 primaryColor = '#009ee3'
 font = 'sans serif'
+
+[global]
+disableWidgetStateDuplicationWarning = true
