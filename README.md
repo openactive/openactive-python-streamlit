@@ -67,8 +67,8 @@ Some feeds will have no entries at all for certain table fields, but for consist
 
 The table rows can be reordered by clicking on the column headings. Also, with your mouse pointer hovering over the table you will see three icons in the top-right, allowing you to: (1) download the data as CSV, (2) search for a particular term, and (3) expand the table to full screen.
 
-If there is coordinate data in the selected feed and you see a map, then you can zoom in and out with your mouse scroll function, and hover over the pins to show pop-up boxes of the location names and addresses. Note that the initial zoom may not capture all pins that are actually present, so it's worth zooming out a bit to check for others that aren't initially seen.
+If there is coordinate data in the selected feed and you see a map, then you can click and hold to pan, scroll to zoom, and hover over the pins to show pop-up boxes of the location names and addresses. Note that the initial zoom may not capture all pins that are actually present, so it's worth zooming out a bit to check for others that aren't initially seen.
 
-To focus on feed items with certain characteristics from the table fields, select as many options from as many filters as you like in the sidebar. This is intentionally not an adaptive filter system, so choosing one option from one filter will not restrict the other options in other filters, all options will remain with respect to the full dataset. If this wasn't so, then filter selection couldn't be easily adjusted after the initial selection.
+To focus on feed items with certain characteristics from the table fields, select as many options from as many filters as you like in the sidebar. Filters are still shown but are disabled when they have no options. To change the selection, you can clear the filters individually or altogether with the "Clear" button.
 
 When you're done working with the app, deactivate it by pressing Ctrl-c in the terminal where it's running.
